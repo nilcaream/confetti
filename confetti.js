@@ -1,7 +1,5 @@
 (r => document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", r) : r())(() => {
 
-    let timestamp = 0;
-
     const random = (min, max) => min + (max - min) * Math.random();
 
     const range = (min, max) => {
@@ -9,7 +7,7 @@
             min: min,
             max: max,
             random: (x = 0) => random(x + min, x + max),
-            force: x => Math.max(min, Math.min(max, x))
+            limit: x => Math.max(min, Math.min(max, x))
         }
     };
 
@@ -22,7 +20,17 @@
         }
     };
 
-    let papers = [];
+    const runtime = {
+        time: 0,
+        papers: [],
+        mouse: {
+            x0: 0,
+            y0: 0,
+            x1: 0,
+            y1: 0,
+            clicked: false
+        }
+    };
 
     class Paper {
         constructor(x, y, v0, angle) {
@@ -36,51 +44,43 @@
         }
     }
 
-    const mouse = {
-        x0: 0,
-        y0: 0,
-        x1: 0,
-        y1: 0,
-        click: false
-    };
 
     const createCanvas = () => {
         const canvas = document.getElementById("canvas");
         canvas.setAttribute("width", window.innerWidth.toString());
         canvas.setAttribute("height", window.innerHeight.toString());
-        canvas.style.backgroundColor = "rgba(255,255,255,0.5)";
         canvas.style.position = "fixed";
         canvas.style.top = "0";
         canvas.style.left = "0";
 
         canvas.addEventListener("mousedown", e => {
-            mouse.x0 = e.clientX;
-            mouse.y0 = e.clientY;
-            mouse.x1 = e.clientX;
-            mouse.y1 = e.clientY;
-            mouse.click = true;
+            runtime.mouse.x0 = e.clientX;
+            runtime.mouse.y0 = e.clientY;
+            runtime.mouse.x1 = e.clientX;
+            runtime.mouse.y1 = e.clientY;
+            runtime.mouse.clicked = true;
         });
 
         canvas.addEventListener("mousemove", e => {
-            if (mouse.click) {
-                mouse.x1 = e.clientX;
-                mouse.y1 = e.clientY;
+            if (runtime.mouse.clicked) {
+                runtime.mouse.x1 = e.clientX;
+                runtime.mouse.y1 = e.clientY;
             }
         });
 
         canvas.addEventListener("mouseup", () => {
-            mouse.click = false;
+            runtime.mouse.clicked = false;
 
-            const xD = mouse.x0 - mouse.x1;
-            const yD = mouse.y1 - mouse.y0;
+            const xD = runtime.mouse.x0 - runtime.mouse.x1;
+            const yD = runtime.mouse.y1 - runtime.mouse.y0;
             const length = Math.sqrt(xD * xD + yD * yD);
 
             if (length > cfg.v0.length.min) {
                 const count = cfg.count.random();
                 for (let i = 0; i < count; i++) {
-                    const v0 = cfg.v0.variation.random(cfg.v0.length.force(length));
+                    const v0 = cfg.v0.variation.random(cfg.v0.length.limit(length));
                     const angle = cfg.v0.angle.random(Math.atan2(yD, xD));
-                    papers.push(new Paper(mouse.x0, mouse.y0, v0, angle));
+                    runtime.papers.push(new Paper(runtime.mouse.x0, runtime.mouse.y0, v0, angle));
                 }
             }
         });
@@ -100,7 +100,7 @@
     const animate = diff => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        papers.forEach(paper => {
+        runtime.papers.forEach(paper => {
             // V in [px/s]
             paper.t += diff / 1000;
             paper.x = physics.x(paper);
@@ -117,29 +117,29 @@
             ctx.restore();
         });
 
-        if (mouse.click) {
+        if (runtime.mouse.clicked) {
             ctx.save();
             ctx.beginPath();
-            ctx.arc(mouse.x0, mouse.y0, 10, 0, 2 * Math.PI);
+            ctx.arc(runtime.mouse.x0, runtime.mouse.y0, 10, 0, 2 * Math.PI);
             ctx.stroke();
             ctx.beginPath();
             ctx.setLineDash([4, 4]);
-            ctx.moveTo(mouse.x0, mouse.y0);
-            ctx.lineTo(mouse.x1, mouse.y1);
+            ctx.moveTo(runtime.mouse.x0, runtime.mouse.y0);
+            ctx.lineTo(runtime.mouse.x1, runtime.mouse.y1);
             ctx.stroke();
             ctx.restore();
         }
 
-        papers = papers.filter(p => p.y < canvas.height);
+        runtime.papers = runtime.papers.filter(p => p.y < canvas.height);
 
         ctx.save();
-        ctx.fillText(`${(1000 / diff).toFixed(0)} FPS | ${papers.length}`, 20, 20);
+        ctx.fillText(`${(1000 / diff).toFixed(0)} FPS | ${runtime.papers.length}`, 20, 20);
         ctx.restore();
     };
 
-    const frame = time => {
-        animate(time - timestamp);
-        timestamp = time;
+    const frame = now => {
+        animate(now - runtime.time);
+        runtime.time = now;
         window.requestAnimationFrame(frame);
     }
 
