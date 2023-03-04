@@ -22,7 +22,7 @@
         }
     };
 
-    const papers = [];
+    let papers = [];
 
     class Paper {
         constructor(x, y, v0, angle) {
@@ -91,14 +91,20 @@
     const canvas = createCanvas();
     const ctx = canvas.getContext("2d");
 
+    const physics = {
+        g: 90, // [px/s^2]
+        x: paper => paper.x0 + paper.vX * paper.t,
+        y: paper => paper.y0 - paper.vY * paper.t + 0.5 * physics.g * paper.t * paper.t
+    };
+
     const animate = diff => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         papers.forEach(paper => {
             // V in [px/s]
             paper.t += diff / 1000;
-            paper.x = paper.x0 + paper.vX * paper.t;
-            paper.y = paper.y0 - paper.vY * paper.t;
+            paper.x = physics.x(paper);
+            paper.y = physics.y(paper);
 
             ctx.save();
             ctx.translate(paper.x, paper.y);
@@ -124,8 +130,10 @@
             ctx.restore();
         }
 
+        papers = papers.filter(p => p.y < canvas.height);
+
         ctx.save();
-        ctx.fillText(`${(1000 / diff).toFixed(0)} FPS`, 20, 20);
+        ctx.fillText(`${(1000 / diff).toFixed(0)} FPS | ${papers.length}`, 20, 20);
         ctx.restore();
     };
 
