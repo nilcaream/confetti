@@ -2,6 +2,26 @@
 
     let timestamp = 0;
 
+    const random = (min, max) => min + (max - min) * Math.random();
+
+    const range = (min, max) => {
+        return {
+            min: min,
+            max: max,
+            random: (x = 0) => random(x + min, x + max),
+            force: x => Math.max(min, Math.min(max, x))
+        }
+    };
+
+    const cfg = {
+        count: range(30, 60),
+        v0: {
+            length: range(10, 100),
+            variation: range(0, 50),
+            angle: range(-Math.PI / 2, Math.PI / 2)
+        }
+    };
+
     const papers = [];
 
     class Paper {
@@ -53,11 +73,15 @@
 
             const xD = mouse.x0 - mouse.x1;
             const yD = mouse.y1 - mouse.y0;
-            const v0 = Math.sqrt(xD * xD + yD * yD);
-            const angle = Math.atan2(yD, xD);
+            const length = Math.sqrt(xD * xD + yD * yD);
 
-            for (let i = 0; i < 50; i++) {
-                papers.push(new Paper(mouse.x0, mouse.y0, v0, angle));
+            if (length > cfg.v0.length.min) {
+                const count = cfg.count.random();
+                for (let i = 0; i < count; i++) {
+                    const v0 = cfg.v0.variation.random(cfg.v0.length.force(length));
+                    const angle = cfg.v0.angle.random(Math.atan2(yD, xD));
+                    papers.push(new Paper(mouse.x0, mouse.y0, v0, angle));
+                }
             }
         });
 
@@ -71,9 +95,10 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         papers.forEach(paper => {
-            paper.t += diff;
-            paper.x = paper.x0 + paper.vX * paper.t * 0.01;
-            paper.y = paper.y0 - paper.vY * paper.t * 0.01;
+            // V in [px/s]
+            paper.t += diff / 1000;
+            paper.x = paper.x0 + paper.vX * paper.t;
+            paper.y = paper.y0 - paper.vY * paper.t;
 
             ctx.save();
             ctx.translate(paper.x, paper.y);
