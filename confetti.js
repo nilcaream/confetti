@@ -12,17 +12,17 @@
     };
 
     const cfg = {
-        count: range(30, 60),
+        count: range(60, 80),
         v0: {
             threshold: 10,
             length: range(30, 100),
             variation: range(0, 50),
-            angle: range(-Math.PI / 2, Math.PI / 2),
+            angle: range(-Math.PI / 3, Math.PI / 3),
             multiplier: range(2, 3)
         },
         size: {
             width: 10,
-            height: 5,
+            height: 6,
             skew: 4,
             wobble: {
                 zoom: range(4.0, 6.0),
@@ -58,6 +58,12 @@
                 zoom: cfg.size.wobble.zoom.random(),
                 offset: cfg.size.wobble.offset.random()
             };
+            this.color = {
+                r: random(0, 255).toFixed(),
+                g: random(0, 255).toFixed(),
+                b: random(0, 255).toFixed(),
+                a: random(0.8, 1),
+            }
         }
     }
 
@@ -135,6 +141,7 @@
             ctx.lineTo(width, 0);
             ctx.lineTo(width + skew, height * wobble);
             ctx.lineTo(skew, height * wobble);
+            ctx.fillStyle = `rgba(${paper.color.r},${paper.color.g},${paper.color.b},${paper.color.a})`;
             ctx.fill();
             ctx.restore();
         });
