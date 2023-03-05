@@ -16,9 +16,9 @@
         v0: {
             threshold: 10,
             length: range(30, 100),
-            variation: range(0, 50),
-            angle: range(-Math.PI / 3, Math.PI / 3),
-            multiplier: range(2, 3)
+            variation: range(20, 90),
+            angle: range(-Math.PI / 4, Math.PI / 4),
+            multiplier: range(3, 5)
         },
         size: {
             width: 10,
@@ -28,8 +28,17 @@
                 zoom: range(4.0, 6.0),
                 offset: range(-Math.PI, Math.PI),
             }
+        },
+        fade: {
+            t0: 2, // [s]
+            t1: 3, // [s]
         }
     };
+
+    // https://www.desmos.com/calculator/zu1mawkfz8
+    cfg.fade.b = 1 / (1 - (cfg.fade.t0 / cfg.fade.t1));
+    cfg.fade.a = -cfg.fade.b / cfg.fade.t1;
+    cfg.fade.f = t => Math.min(1, Math.max(0, cfg.fade.a * t + cfg.fade.b));
 
     const runtime = {
         time: 0,
@@ -49,7 +58,7 @@
             this.y = y;
             this.vX = v0 * Math.cos(angle);
             this.vY = v0 * Math.sin(angle);
-            this.vT = v0 / 3;
+            this.vT = 60; // static drag; dynamic drag: this.vT = v0 / 3
             this.x0 = x;
             this.y0 = y;
             this.t = 0;
@@ -62,7 +71,7 @@
                 r: random(0, 255).toFixed(),
                 g: random(0, 255).toFixed(),
                 b: random(0, 255).toFixed(),
-                a: random(0.8, 1),
+                a: random(0.9, 1),
             }
         }
     }
@@ -128,6 +137,7 @@
             paper.t += diff / 1000; // V in [px/s]
             paper.x = physics.x(paper);
             paper.y = physics.y(paper);
+            paper.color.a = paper.color.a * cfg.fade.f(paper.t);
 
             const wobble = Math.cos(paper.wobble.zoom * paper.t + paper.wobble.offset);
             const width = cfg.size.width * paper.orientation;
@@ -159,7 +169,7 @@
             ctx.restore();
         }
 
-        runtime.papers = runtime.papers.filter(p => p.y < canvas.height);
+        runtime.papers = runtime.papers.filter(p => p.y < canvas.height && p.color.a > 0);
 
         ctx.save();
         ctx.fillText(`${(1000 / diff).toFixed(0)} FPS | ${runtime.papers.length}`, 20, 20);
