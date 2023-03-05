@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Confetti everywhere",
+  "description": "Fire confetti on any web page. Confetti icons created by pongsakornRed - Flaticon. https://www.flaticon.com/free-icons/confetti",
+  "version": "1.0",
+  "author": "nil.caream@gmail.com",
+  "homepage_url": "https://github.com/nilcaream/confetti",
+  "content_scripts": [
+    {
+      "run_at": "document_idle",
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "confetti.js"
+      ]
+    }
+  ],
+  "icons": {
+    "16": "icon-16.png",
+    "32": "icon-32.png",
+    "64": "icon-64.png",
+    "128": "icon-128.png"
+  }
+}
