@@ -14,9 +14,11 @@
     const cfg = {
         count: range(30, 60),
         v0: {
-            length: range(10, 100),
+            threshold: 10,
+            length: range(30, 100),
             variation: range(0, 50),
-            angle: range(-Math.PI / 2, Math.PI / 2)
+            angle: range(-Math.PI / 2, Math.PI / 2),
+            multiplier: range(2, 3)
         }
     };
 
@@ -38,6 +40,7 @@
             this.y = y;
             this.vX = v0 * Math.cos(angle);
             this.vY = v0 * Math.sin(angle);
+            this.vT = v0 / 3;
             this.x0 = x;
             this.y0 = y;
             this.t = 0;
@@ -75,10 +78,10 @@
             const yD = runtime.mouse.y1 - runtime.mouse.y0;
             const length = Math.sqrt(xD * xD + yD * yD);
 
-            if (length > cfg.v0.length.min) {
+            if (length > cfg.v0.threshold) {
                 const count = cfg.count.random();
                 for (let i = 0; i < count; i++) {
-                    const v0 = cfg.v0.variation.random(cfg.v0.length.limit(length));
+                    const v0 = cfg.v0.multiplier.random() * cfg.v0.variation.random(cfg.v0.length.limit(length));
                     const angle = cfg.v0.angle.random(Math.atan2(yD, xD));
                     runtime.papers.push(new Paper(runtime.mouse.x0, runtime.mouse.y0, v0, angle));
                 }
@@ -92,9 +95,10 @@
     const ctx = canvas.getContext("2d");
 
     const physics = {
+        // https://farside.ph.utexas.edu/teaching/336k/Newton/node29.html
         g: 90, // [px/s^2]
-        x: paper => paper.x0 + paper.vX * paper.t,
-        y: paper => paper.y0 - paper.vY * paper.t + 0.5 * physics.g * paper.t * paper.t
+        x: paper => paper.x0 + paper.vT * paper.vX * (1 - Math.exp(-physics.g * paper.t / paper.vT)) / physics.g,
+        y: paper => paper.y0 - paper.vT * (paper.vY + paper.vT) * (1 - Math.exp(-physics.g * paper.t / paper.vT)) / physics.g + paper.vT * paper.t
     };
 
     const animate = diff => {
