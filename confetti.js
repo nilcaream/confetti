@@ -2,7 +2,7 @@
 
     const random = (min, max) => min + (max - min) * Math.random();
 
-    const range = (min, max) => {
+    const range = (min, max = min) => {
         return {
             min: min,
             max: max,
@@ -28,6 +28,11 @@
                 zoom: range(4.0, 6.0),
                 offset: range(-Math.PI, Math.PI),
             }
+        },
+        rotation: { // paper rotation around shifted axis
+            zoom: range(-2, 2),
+            offset: range(-Math.PI, Math.PI),
+            shift: range(5, 10)
         },
         fade: {
             t0: 2, // [s]
@@ -72,12 +77,16 @@
                 g: random(0, 255).toFixed(),
                 b: random(0, 255).toFixed(),
                 a: random(0.9, 1),
-            }
+            };
+            this.rotation = {
+                zoom: cfg.rotation.zoom.random(),
+                offset: cfg.rotation.offset.random(),
+                shift: cfg.rotation.shift.random(),
+            };
         }
     }
 
-
-    const createCanvas = () => {
+    const initialize = () => {
         const canvas = document.getElementById("canvas");
         canvas.setAttribute("width", window.innerWidth.toString());
         canvas.setAttribute("height", window.innerHeight.toString());
@@ -117,11 +126,9 @@
             }
         });
 
-        return canvas;
+        runtime.canvas = canvas;
+        runtime.ctx = canvas.getContext("2d");
     };
-
-    const canvas = createCanvas();
-    const ctx = canvas.getContext("2d");
 
     const physics = {
         // https://farside.ph.utexas.edu/teaching/336k/Newton/node29.html
@@ -131,6 +138,9 @@
     };
 
     const animate = diff => {
+        const ctx = runtime.ctx;
+        const canvas = runtime.canvas;
+
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         runtime.papers.forEach(paper => {
@@ -146,6 +156,8 @@
 
             ctx.save();
             ctx.translate(paper.x, paper.y);
+            ctx.rotate(paper.t * paper.rotation.zoom + paper.rotation.offset);
+            ctx.translate(paper.rotation.shift, paper.rotation.shift);
             ctx.beginPath();
             ctx.moveTo(0, 0);
             ctx.lineTo(width, 0);
@@ -182,6 +194,7 @@
         window.requestAnimationFrame(frame);
     }
 
+    initialize();
     frame(0);
 
 });
