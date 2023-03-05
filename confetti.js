@@ -19,6 +19,15 @@
             variation: range(0, 50),
             angle: range(-Math.PI / 2, Math.PI / 2),
             multiplier: range(2, 3)
+        },
+        size: {
+            width: 10,
+            height: 5,
+            skew: 4,
+            wobble: {
+                zoom: range(4.0, 6.0),
+                offset: range(-Math.PI, Math.PI),
+            }
         }
     };
 
@@ -44,6 +53,11 @@
             this.x0 = x;
             this.y0 = y;
             this.t = 0;
+            this.orientation = Math.sign(random(-1, 1)) || 1;
+            this.wobble = {
+                zoom: cfg.size.wobble.zoom.random(),
+                offset: cfg.size.wobble.offset.random()
+            };
         }
     }
 
@@ -105,18 +119,22 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         runtime.papers.forEach(paper => {
-            // V in [px/s]
-            paper.t += diff / 1000;
+            paper.t += diff / 1000; // V in [px/s]
             paper.x = physics.x(paper);
             paper.y = physics.y(paper);
+
+            const wobble = Math.cos(paper.wobble.zoom * paper.t + paper.wobble.offset);
+            const width = cfg.size.width * paper.orientation;
+            const skew = cfg.size.skew * paper.orientation;
+            const height = cfg.size.height;
 
             ctx.save();
             ctx.translate(paper.x, paper.y);
             ctx.beginPath();
             ctx.moveTo(0, 0);
-            ctx.lineTo(10, 0);
-            ctx.lineTo(10, 10);
-            ctx.lineTo(0, 10);
+            ctx.lineTo(width, 0);
+            ctx.lineTo(width + skew, height * wobble);
+            ctx.lineTo(skew, height * wobble);
             ctx.fill();
             ctx.restore();
         });
