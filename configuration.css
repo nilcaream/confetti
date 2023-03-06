@@ -1,0 +1,46 @@
+* {
+    box-sizing: border-box;
+}
+
+#wrapper {
+    width: 22em;
+}
+
+table {
+    width: 100%;
+}
+
+td.label {
+    white-space: nowrap;
+}
+
+tr.spacer {
+    font-weight: bold;
+}
+
+td[colspan="1"] {
+    width: 60px;
+}
+
+td[colspan="2"] {
+    width: 30px;
+}
+
+input {
+    width: 100%;
+    text-align: center;
+}
+
+button {
+    width: 100%;
+    display: block;
+    margin: 5px 0;
+}
+
+#buttons {
+    padding: 0 2px;
+}
+
+.tac {
+    text-align: center;
+}
