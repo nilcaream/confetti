@@ -4,9 +4,12 @@
 
     const id = "nc-confetti-everywhere-main";
 
+    const version = 1;
+
+    const extension = (chrome || {}).storage !== undefined;
     const debug = window.location.host === "example.com" || window.location.host === "";
 
-    const log = m => debug ? console.log(`[${id}] ${m}`) : undefined;
+    const log = m => debug ? console.log(`[${id}${extension ? "-ext" : ""}] ${m}`) : undefined;
 
     const random = (min, max) => min + (max - min) * Math.random();
 
@@ -27,9 +30,9 @@
         v0: {
             threshold: 10,
             length: range(30, 100),
-            variation: range(20, 30),
-            angle: range(-45, 45),
-            multiplier: range(1, 5)
+            variation: range(30, 40),
+            angle: range(-35, 35),
+            multiplier: range(2, 5)
         },
         size: {
             width: 10,
@@ -50,8 +53,8 @@
             t1: 4, // [s]
         },
         physics: {
-            g: 100, // [px/s^2]
-            vT: 100 // [px/s]
+            g: 300, // [px/s^2]
+            vT: 500 // [px/s]
         },
         ui: {
             showFps: true
@@ -133,7 +136,7 @@
         canvas.style.position = "fixed";
         canvas.style.top = "0";
         canvas.style.left = "0";
-        canvas.style.zIndex = "99999";
+        canvas.style.zIndex = "9000";
 
         canvas.addEventListener("mousedown", e => {
             runtime.mouse.x0 = e.clientX;
@@ -162,6 +165,15 @@
         runtime.ctx.font = "9px monospace";
         runtime.ctx.textBaseline = "middle";
         runtime.ctx.textAlign = "center";
+
+        if (!extension) {
+            const settings = document.getElementById("nc-confetti-everywhere-cfg-toggle");
+            settings.addEventListener("click", () => {
+                const iframe = document.getElementById("nc-confetti-everywhere-cfg")
+                iframe.classList.toggle("show");
+                iframe.classList.toggle("hide");
+            });
+        }
     };
 
     const physics = {
@@ -243,7 +255,43 @@
 
     const isVisible = () => document.getElementById(id) !== null;
 
+    const sendMessage = message => {
+        log(`sending ${JSON.stringify(message).substring(0, 64)}`);
+
+        if (extension) {
+            return chrome.runtime.sendMessage(message).then(() => { }, e => {
+                if ((e || "").toString().toLowerCase().indexOf("receiving end does not exist") !== -1) {
+                    log(`configuration panel is not available`);
+                } else {
+                    throw e;
+                }
+            });
+        } else {
+            const iframe = document.getElementById("nc-confetti-everywhere-cfg");
+            if (iframe) {
+                iframe.contentWindow.postMessage(JSON.stringify(message), "*");
+                return Promise.resolve(true);
+            } else {
+                log("no message target");
+                return Promise.resolve(false);
+            }
+        }
+    };
+
+    const prepare = async () => {
+        log("prepare");
+        const defaults = await saveCfg(`defaults.v${version}`);
+        const configuration = await loadCfg(`configuration.v${version}`);
+
+        sendMessage({
+            defaults: defaults,
+            configuration: configuration
+        });
+    };
+
     const show = () => {
+        log("show");
+        prepare();
         if (!isVisible()) {
             createCanvas();
             runtime.running = true;
@@ -258,7 +306,7 @@
         runtime.running = false;
         if (isVisible()) {
             runtime.canvas.style.display = "none";
-            runtime.canvas.style.zIndex = "-99999";
+            runtime.canvas.style.zIndex = "-9000";
         }
         setTimeout(() => {
             runtime.papers = [];
@@ -289,6 +337,25 @@
         } else {
             results[current] = o;
         }
+    };
+
+    const getFlattenCfg = () => {
+        const results = {};
+        flatten(cfg, results, "cfg");
+        return results;
+    };
+
+    const autofire = () => {
+        if (!isVisible()) {
+            show();
+        }
+
+        const x0 = 0.5 * runtime.canvas.width;
+        const y0 = 0.75 * runtime.canvas.height;
+        const x1 = x0;
+        const y1 = y0 + cfg.v0.length.random();
+
+        fire(x0, y0, x1, y1);
     };
 
     const updateCfg = (key, value) => {
@@ -328,67 +395,88 @@
             log(`updating ${key} from ${oldValue} to ${value}`);
             holder[field] = value;
         }
+
+        return value !== oldValue;
     }
 
-    const getFlattenCfg = () => {
-        const results = {};
-        flatten(cfg, results, "cfg");
-        return results;
+    const applyCfg = configuration => {
+        Object.entries(configuration).forEach(([key, value]) => {
+            log(`applying ${key} = ${value}`);
+            updateCfg(key, value);
+        });
     };
 
-    const isExtension = () => (chrome || {}).storage !== undefined;
+    const loadCfg = storageKey => {
+        log(`loading ${storageKey}`);
 
-    const loadCfg = () => {
-        if (isExtension()) {
-            chrome.storage.local.get(["configuration"]).then(result => {
-                if (result.configuration) {
-                    Object.entries(result.configuration).forEach(([key, value]) => {
-                        log(`storage configuration: ${key} = ${value}`);
-                        updateCfg(key, value);
-                    });
+        if (extension) {
+            return chrome.storage.local.get([storageKey]).then(result => {
+                if (result[storageKey]) {
+                    applyCfg(result[storageKey]);
+                    return getFlattenCfg();
+                } else {
+                    return saveCfg(storageKey);
                 }
             });
+        } else {
+            const data = window.localStorage.getItem(storageKey);
+            if (data) {
+                applyCfg(JSON.parse(data));
+                return Promise.resolve(getFlattenCfg());
+            } else {
+                return saveCfg(storageKey);
+            }
         }
     };
 
-    const saveCfg = () => {
-        if (isExtension()) {
-            chrome.storage.local.set({ configuration: getFlattenCfg() });
+    const saveCfg = storageKey => {
+        log(`saving ${storageKey}`);
+
+        const data = {};
+        data[storageKey] = getFlattenCfg();
+
+        if (extension) {
+            return chrome.storage.local.set(data).then(() => data[storageKey]);
+        } else {
+            window.localStorage.setItem(storageKey, JSON.stringify(data[storageKey]));
+            return Promise.resolve(data[storageKey]);
         }
     };
 
-    const autofire = () => {
-        show();
-
-        const x0 = 0.5 * runtime.canvas.width;
-        const y0 = 0.75 * runtime.canvas.height;
-        const x1 = x0;
-        const y1 = y0 + cfg.v0.length.random();
-
-        fire(x0, y0, x1, y1);
-    };
-
-    const monitorCfgChanges = () => {
-        if (isExtension()) {
-            chrome.runtime.onMessage.addListener(r => {
-                log(`received ${JSON.stringify(r)}`);
-                if (r.update) {
-                    updateCfg(r.update.key, r.update.value);
-                    saveCfg();
-                } else if (r.autofire && runtime.papers.length === 0) {
-                    autofire();
-                }
-            });
+    const consumeMessage = async message => {
+        log(`received ${JSON.stringify(message).substring(0, 64)}`);
+        if (message.update) {
+            const changed = updateCfg(message.update.key, message.update.value);
+            if (changed) {
+                await saveCfg(`configuration.v${version}`);
+            }
+        } else if (message.autofire && runtime.papers.length === 0) {
+            autofire();
+        } else if (message.show) {
+            show();
         }
     };
 
-    document.addEventListener("keydown", e => {
-        if (e.key === "~") {
-            toggleVisibility();
+    const startMessageListener = () => {
+        if (extension) {
+            chrome.runtime.onMessage.addListener(consumeMessage);
+        } else {
+            window.addEventListener("message", m => consumeMessage(JSON.parse(m.data)));
         }
-    });
+    };
 
-    loadCfg();
-    monitorCfgChanges();
+    // --------------------------------
+
+    if (extension) {
+        document.addEventListener("keydown", e => {
+            if (e.key === "~" && e.ctrlKey) {
+                toggleVisibility();
+            } else if (runtime.running) {
+                hide();
+            }
+        });
+    }
+
+    startMessageListener();
 
 });

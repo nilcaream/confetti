@@ -2,6 +2,12 @@
     box-sizing: border-box;
 }
 
+body {
+    font-family: "Noto Sans", Arial, sans-serif;
+    font-size: 75%;
+    margin: 4px;
+}
+
 #wrapper {
     width: 22em;
 }
@@ -29,11 +35,24 @@ td[colspan="2"] {
 input {
     width: 100%;
     text-align: center;
+    border: 1px solid #111;
+}
+
+input.error {
+    background-color: #fdd;
+}
+
+input.default {
+    background-color: #f0f0f0;
 }
 
 button {
     width: 100%;
-    display: block;
+    display: inline-block;
+    margin: 2px 0;
+}
+
+hr {
     margin: 5px 0;
 }
 

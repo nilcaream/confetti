@@ -1,0 +1,27 @@
+#nc-confetti-everywhere-cfg {
+   
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 280px;
+    height: 640px;
+    border: none;
+}
+
+#nc-confetti-everywhere-cfg-toggle {
+    z-index: 9100;
+    position: absolute;
+    bottom: 2px;
+    left: 2px;
+    padding: 3px;
+    cursor: pointer;
+}
+
+.show {
+    z-index: 9100;
+}
+
+.hide {
+    display: none;
+    z-index: -9100;
+}
