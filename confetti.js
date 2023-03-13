@@ -57,7 +57,8 @@
             vT: 500 // [px/s]
         },
         ui: {
-            showFps: true
+            showFps: true,
+            invertColors: false
         }
     };
 
@@ -71,13 +72,7 @@
     const runtime = {
         time: 0,
         papers: [],
-        mouse: {
-            x0: 0,
-            y0: 0,
-            x1: 0,
-            y1: 0,
-            clicked: false
-        },
+        touches: {},
         running: false,
         frameCounter: 0,
         lastFpsCheckTime: 0,
@@ -128,51 +123,98 @@
         }
     };
 
+    const getColor = (normal, inverted) => cfg.ui.invertColors ? inverted : normal;
+
+    const getIframe = () => document.getElementById("nc-confetti-everywhere-cfg");
+
     const createCanvas = () => {
         const canvas = document.createElement("canvas");
-        canvas.setAttribute("width", window.innerWidth.toString());
-        canvas.setAttribute("height", window.innerHeight.toString());
         canvas.setAttribute("id", id);
         canvas.style.position = "fixed";
         canvas.style.top = "0";
         canvas.style.left = "0";
         canvas.style.zIndex = "9000";
 
-        canvas.addEventListener("mousedown", e => {
-            runtime.mouse.x0 = e.clientX;
-            runtime.mouse.y0 = e.clientY;
-            runtime.mouse.x1 = e.clientX;
-            runtime.mouse.y1 = e.clientY;
-            runtime.mouse.clicked = true;
-        });
-
-        canvas.addEventListener("mousemove", e => {
-            if (runtime.mouse.clicked) {
-                runtime.mouse.x1 = e.clientX;
-                runtime.mouse.y1 = e.clientY;
+        const updateTouch = (id, x, y) => {
+            if (runtime.touches[id] === undefined) {
+                runtime.touches[id] = {
+                    x0: x,
+                    y0: y,
+                    x1: x,
+                    y1: y
+                };
+            } else {
+                runtime.touches[id].x1 = x;
+                runtime.touches[id].y1 = y;
             }
+        };
+
+        const removeTouch = id => delete runtime.touches[id];
+
+        const onDown = (id, x, y) => updateTouch(id, x, y);
+
+        const onMove = (id, x, y) => {
+            if (runtime.touches[id]) {
+                updateTouch(id, x, y)
+            }
+        };
+
+        const onUp = id => {
+            const touch = runtime.touches[id];
+            if (touch) {
+                fire(touch.x0, touch.y0, touch.x1, touch.y1);
+                removeTouch(id);
+            }
+        };
+
+        canvas.addEventListener("mousedown", e => onDown("mouse", e.clientX, e.clientY));
+        canvas.addEventListener("mousemove", e => onMove("mouse", e.clientX, e.clientY));
+        canvas.addEventListener("mouseup", () => onUp("mouse"));
+
+        canvas.addEventListener("touchstart", e => {
+            e.preventDefault();
+            [...e.changedTouches].forEach(touch => onDown(touch.identifier, touch.clientX, touch.clientY));
+        });
+        canvas.addEventListener("touchmove", e => {
+            e.preventDefault();
+            [...e.changedTouches].forEach(touch => onMove(touch.identifier, touch.clientX, touch.clientY));
+        });
+        canvas.addEventListener("touchend", e => {
+            e.preventDefault();
+            [...e.changedTouches].forEach(touch => onUp(touch.identifier));
+        });
+        canvas.addEventListener("touchcancel", e => {
+            e.preventDefault();
+            [...e.changedTouches].forEach(touch => removeTouch(touch.identifier));
         });
 
-        canvas.addEventListener("mouseup", () => {
-            runtime.mouse.clicked = false;
-            fire(runtime.mouse.x0, runtime.mouse.y0, runtime.mouse.x1, runtime.mouse.y1);
-        });
-
-        document.getElementsByTagName("body")[0].append(canvas);
+        document.body.append(canvas);
 
         runtime.canvas = canvas;
         runtime.ctx = canvas.getContext("2d");
-        runtime.ctx.font = "9px monospace";
-        runtime.ctx.textBaseline = "middle";
-        runtime.ctx.textAlign = "center";
+
+        refreshCanvas();
 
         if (!extension) {
             const settings = document.getElementById("nc-confetti-everywhere-cfg-toggle");
             settings.addEventListener("click", () => {
-                const iframe = document.getElementById("nc-confetti-everywhere-cfg")
-                iframe.classList.toggle("show");
+                const iframe = getIframe();
+                const visible = iframe.classList.toggle("show");
                 iframe.classList.toggle("hide");
+                if (visible) {
+                    sendMessage({ show: true });
+                }
             });
+        }
+    };
+
+    const refreshCanvas = () => {
+        if (isVisible()) {
+            runtime.canvas.setAttribute("width", window.innerWidth.toString());
+            runtime.canvas.setAttribute("height", window.innerHeight.toString());
+            runtime.ctx.font = "9px monospace";
+            runtime.ctx.textBaseline = "middle";
+            runtime.ctx.textAlign = "center";
         }
     };
 
@@ -185,6 +227,8 @@
     const animate = diff => {
         const ctx = runtime.ctx;
         const canvas = runtime.canvas;
+
+        canvas.style.backgroundColor = getColor("#fff", "#000");
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -213,25 +257,27 @@
             ctx.restore();
         });
 
-        if (runtime.mouse.clicked) {
+        Object.values(runtime.touches).forEach(touch => {
             ctx.save();
+            ctx.strokeStyle = getColor("#000", "#fff");
             ctx.beginPath();
-            ctx.arc(runtime.mouse.x0, runtime.mouse.y0, 10, 0, 2 * Math.PI);
+            ctx.arc(touch.x0, touch.y0, 10, 0, 2 * Math.PI);
             ctx.stroke();
             ctx.beginPath();
             ctx.setLineDash([4, 4]);
-            ctx.moveTo(runtime.mouse.x0, runtime.mouse.y0);
-            ctx.lineTo(runtime.mouse.x1, runtime.mouse.y1);
+            ctx.moveTo(touch.x0, touch.y0);
+            ctx.lineTo(touch.x1, touch.y1);
             ctx.stroke();
             ctx.restore();
-        }
+        });
 
         if (cfg.ui.showFps) {
             ctx.save();
-            ctx.fillStyle = "white";
+            ctx.fillStyle = getColor("white", "black");
             ctx.fillRect(0, 0, 90, 20);
-            ctx.fillStyle = "black";
+            ctx.fillStyle = getColor("black", "white");
             ctx.fillText(`${runtime.fps} FPS | ${runtime.papers.length}`, 45, 10);
+            // ctx.fillText(`${window.innerWidth}x${window.innerHeight} | ${document.documentElement.clientWidth}x${document.documentElement.clientHeight}`, 45, 10);
             ctx.restore();
         }
     };
@@ -267,7 +313,7 @@
                 }
             });
         } else {
-            const iframe = document.getElementById("nc-confetti-everywhere-cfg");
+            const iframe = getIframe();
             if (iframe) {
                 iframe.contentWindow.postMessage(JSON.stringify(message), "*");
                 return Promise.resolve(true);
@@ -292,12 +338,11 @@
     const show = () => {
         log("show");
         prepare();
+
+        runtime.running = true;
+
         if (!isVisible()) {
             createCanvas();
-            runtime.running = true;
-            runtime.frameCounter = 0;
-            runtime.lastFpsCheckTime = 0;
-            runtime.fps = 0;
             frame(0);
         }
     };
@@ -308,13 +353,6 @@
             runtime.canvas.style.display = "none";
             runtime.canvas.style.zIndex = "-9000";
         }
-        setTimeout(() => {
-            runtime.papers = [];
-            if (isVisible()) {
-                document.getElementById(id).remove();
-            }
-            log("hidden");
-        }, 100);
     };
 
     const toggleVisibility = () => {
@@ -396,6 +434,17 @@
             holder[field] = value;
         }
 
+        if (key === "cfg.ui.invertColors") {
+            document.body.style.backgroundColor = getColor("#fff", "#000");
+            if (!extension) {
+                if (value) {
+                    document.getElementById("nc-confetti-everywhere-cfg-toggle").setAttribute("src", "gear-24-white.png");
+                } else {
+                    document.getElementById("nc-confetti-everywhere-cfg-toggle").setAttribute("src", "gear-24-black.png");
+                }
+            }
+        }
+
         return value !== oldValue;
     }
 
@@ -445,6 +494,7 @@
 
     const consumeMessage = async message => {
         log(`received ${JSON.stringify(message).substring(0, 64)}`);
+
         if (message.update) {
             const changed = updateCfg(message.update.key, message.update.value);
             if (changed) {
@@ -454,6 +504,10 @@
             autofire();
         } else if (message.show) {
             show();
+        } else if (message.size && !extension) {
+            const iframe = getIframe();
+            iframe.style.width = message.size.width + "px";
+            iframe.style.height = message.size.height + "px";
         }
     };
 
@@ -476,6 +530,12 @@
             }
         });
     }
+
+    visualViewport.addEventListener("resize", e => {
+        if (isVisible()) {
+            refreshCanvas();
+        }
+    });
 
     startMessageListener();
 

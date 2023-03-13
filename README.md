@@ -1,9 +1,14 @@
 # Confetti Everywhere
 
-Chrome Extension.
+## Chrome Extension
 
-Click `~` key (`Ctrl` + `\``) to activate.
+Click `Ctrl` + `~` keys (`Ctrl` + `Shift` + `\``) to activate.
 
-[Confetti icons created by pongsakornRed - Flaticon](https://www.flaticon.com/free-icons/confetti)
+## Stanalone
 
-[Gear icons created by Freepik - Flaticon](https://www.flaticon.com/free-icons/gear)
+Open `confetti.html` in browser.
+
+# Graphics 
+
+- [Confetti icons created by pongsakornRed - Flaticon](https://www.flaticon.com/free-icons/confetti)
+- [Gear icons created by Freepik - Flaticon](https://www.flaticon.com/free-icons/gear)

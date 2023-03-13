@@ -6,6 +6,7 @@ body {
     font-family: "Noto Sans", Arial, sans-serif;
     font-size: 75%;
     margin: 4px;
+    background-color: white;
 }
 
 #wrapper {
@@ -52,12 +53,25 @@ button {
     margin: 2px 0;
 }
 
+button.wide {
+    width: 100%;
+}
+
+button.narrow {
+    width: 49%;
+}
+
+button.enabled {
+    font-weight: bold;
+}
+
 hr {
     margin: 5px 0;
 }
 
 #buttons {
     padding: 0 2px;
+    text-align: center;
 }
 
 .tac {

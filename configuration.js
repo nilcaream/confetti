@@ -57,6 +57,12 @@
   add("cfg.physics.vT", "Terminal velocity [px/s]", "Velocity at which the air drag force balances the gravitational force");
 
   add("cfg.ui.showFps");
+  add("cfg.ui.invertColors");
+
+  const updateClass = (element, toAdd, toRemove, invert = false) => {
+    element.classList.add(invert ? toRemove : toAdd);
+    element.classList.remove(invert ? toAdd : toRemove);
+  };
 
   const sendMessage = (key, value) => {
     const message = {};
@@ -111,11 +117,19 @@
     return td;
   };
 
+  const updateButtonColor = (key, enabled) => {
+    const button = document.getElementById(key);
+    if (button) {
+      updateClass(button, "enabled", "disabled", !enabled);
+    }
+  }
+
   const toggleBoolean = key => {
     const holder = cfgUi.filter(c => c.key === key)[0];
     if (holder) {
       holder.value1 = !holder.value1;
       updateCfg(holder.key, holder.value1);
+      updateButtonColor(holder.value1);
       log(`${holder.key} = ${holder.value1}`);
       sendMessage("update", { key: holder.key, value: holder.value1 });
     } else {
@@ -135,7 +149,10 @@
   };
 
   const addButtonsActions = () => {
-    document.getElementById("autofire").addEventListener("click", () => autofire = !autofire);
+    document.getElementById("autofire").addEventListener("click", e => {
+      autofire = !autofire;
+      updateClass(e.target, "enabled", "disabled", !autofire);
+    });
 
     document.getElementById("reset").addEventListener("click", () => {
       const update = (key, value) => {
@@ -154,13 +171,11 @@
 
       resetBoolean("cfg.ui.showFps");
 
-      document.querySelectorAll("input").forEach(input => {
-        input.classList.remove("error");
-        input.classList.add("default");
-      });
+      document.querySelectorAll("input").forEach(input => updateClass(input, "default", "error"));
     });
 
-    document.getElementById("fps").addEventListener("click", () => toggleBoolean("cfg.ui.showFps"));
+    document.getElementById("cfg.ui.showFps").addEventListener("click", () => toggleBoolean("cfg.ui.showFps"));
+    document.getElementById("cfg.ui.invertColors").addEventListener("click", () => toggleBoolean("cfg.ui.invertColors"));
 
     setInterval(() => {
       if (autofire) {
@@ -190,6 +205,7 @@
 
     if (singleValueHolder !== undefined) {
       singleValueHolder[target1] = value;
+      updateButtonColor(key, value);
     } else if (holder !== undefined) {
       if (parameter === "range-min") {
         holder[target1] = value;
@@ -263,6 +279,12 @@
       populateTable();
       addButtonsActions();
       log("initialized");
+    } else if (message.show) {
+      const rect = document.body.getBoundingClientRect();
+      sendMessage("size", {
+        width: rect.left + rect.right,
+        height: rect.bottom + rect.top
+      });
     }
   };
 

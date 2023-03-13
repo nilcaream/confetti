@@ -1,16 +1,16 @@
 #nc-confetti-everywhere-cfg {
-   
     position: absolute;
     top: 0;
     right: 0;
-    width: 280px;
-    height: 640px;
+    width: 272px;
+    height: min(595px, 100vh);
     border: none;
+    overflow-x: hidden;
 }
 
 #nc-confetti-everywhere-cfg-toggle {
     z-index: 9100;
-    position: absolute;
+    position: fixed;
     bottom: 2px;
     left: 2px;
     padding: 3px;
@@ -24,4 +24,10 @@
 .hide {
     display: none;
     z-index: -9100;
+}
+
+@media only screen and (max-width: 700px) and (orientation: portrait) {
+    img {
+        margin: 2px;
+    }
 }
