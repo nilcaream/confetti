@@ -228,7 +228,9 @@
         const ctx = runtime.ctx;
         const canvas = runtime.canvas;
 
-        canvas.style.backgroundColor = getColor("#fff", "#000");
+        if (!extension) {
+            canvas.style.backgroundColor = getColor("#fff", "#000");
+        }
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -294,9 +296,8 @@
                 runtime.fps = (10 * 1000 / (now - runtime.lastFpsCheckTime)).toFixed(0);
                 runtime.lastFpsCheckTime = now;
             }
-
-            window.requestAnimationFrame(frame);
         }
+        window.requestAnimationFrame(frame);
     }
 
     const isVisible = () => document.getElementById(id) !== null;
@@ -326,25 +327,34 @@
 
     const prepare = async () => {
         log("prepare");
-        const defaults = await saveCfg(`defaults.v${version}`);
+        const defaults = cfg.defaults || await saveCfg(`defaults.v${version}`);
         const configuration = await loadCfg(`configuration.v${version}`);
 
         sendMessage({
             defaults: defaults,
             configuration: configuration
         });
+
+        cfg.defaults = defaults;
     };
 
     const show = () => {
         log("show");
         prepare();
 
-        runtime.running = true;
-
         if (!isVisible()) {
             createCanvas();
             frame(0);
         }
+
+        if (runtime.running === false) {
+            runtime.papers = [];
+            runtime.frameCounter = 0;
+            runtime.running = true;
+        }
+
+        runtime.canvas.style.display = "block";
+        runtime.canvas.style.zIndex = "9000";
     };
 
     const hide = () => {
@@ -435,8 +445,8 @@
         }
 
         if (key === "cfg.ui.invertColors") {
-            document.body.style.backgroundColor = getColor("#fff", "#000");
             if (!extension) {
+                document.body.style.backgroundColor = getColor("#fff", "#000");
                 if (value) {
                     document.getElementById("nc-confetti-everywhere-cfg-toggle").setAttribute("src", "gear-24-white.png");
                 } else {
@@ -525,7 +535,7 @@
         document.addEventListener("keydown", e => {
             if (e.key === "~" && e.ctrlKey) {
                 toggleVisibility();
-            } else if (runtime.running) {
+            } else if (runtime.running && (e.key.length === 1 || e.key === "Escape")) {
                 hide();
             }
         });
