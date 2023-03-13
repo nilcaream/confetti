@@ -2,7 +2,7 @@
 
 ## Chrome Extension
 
-Click `Ctrl` + `~` keys (`Ctrl` + `Shift` + `\``) to activate.
+Click `Ctrl` + `~` keys (`Ctrl` + `Shift` + `` ` ``) to activate.
 
 ## Stanalone
 
