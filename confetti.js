@@ -211,6 +211,7 @@
         if (isVisible()) {
             runtime.canvas.width = window.innerWidth;
             runtime.canvas.height = window.innerHeight;
+            runtime.canvas.style.cursor = "crosshair";
             runtime.ctx.font = "9px monospace";
             runtime.ctx.textBaseline = "middle";
             runtime.ctx.textAlign = "center";
