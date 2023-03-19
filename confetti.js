@@ -13,40 +13,39 @@
 
     const random = (min, max) => min + (max - min) * Math.random();
 
-    const range = (min, max = min) => {
-        const result = {
-            min: min,
-            max: max,
-        };
+    class Range {
+        constructor(min, max = min) {
+            this.min = min;
+            this.max = max;
+        }
 
-        result.random = (x = 0) => random(x + result.min, x + result.max);
-        result.limit = x => Math.max(result.min, Math.min(result.max, x))
+        random = (x = 0) => random(x + this.min, x + this.max);
 
-        return result;
-    };
+        limit = x => Math.max(this.min, Math.min(this.max, x));
+    }
 
     const cfg = {
-        count: range(160, 200),
+        count: new Range(160, 200),
         v0: {
             threshold: 10,
-            length: range(30, 100),
-            variation: range(30, 40),
-            angle: range(-35, 35),
-            multiplier: range(2, 5)
+            length: new Range(30, 100),
+            variation: new Range(30, 40),
+            angle: new Range(-35, 35),
+            multiplier: new Range(2, 5)
         },
         size: {
             width: 10,
             height: 6,
             skew: 4,
             wobble: {
-                zoom: range(4.0, 6.0),
-                offset: range(-180, 180),
+                zoom: new Range(4.0, 6.0),
+                offset: new Range(-180, 180),
             }
         },
         rotation: { // paper rotation around shifted axis
-            zoom: range(-2, 2),
-            offset: range(-180, 180),
-            shift: range(5, 10)
+            zoom: new Range(-2, 2),
+            offset: new Range(-180, 180),
+            shift: new Range(5, 10)
         },
         fade: {
             t0: 3, // [s]
@@ -210,8 +209,8 @@
 
     const refreshCanvas = () => {
         if (isVisible()) {
-            runtime.canvas.setAttribute("width", window.innerWidth.toString());
-            runtime.canvas.setAttribute("height", window.innerHeight.toString());
+            runtime.canvas.width = window.innerWidth;
+            runtime.canvas.height = window.innerHeight;
             runtime.ctx.font = "9px monospace";
             runtime.ctx.textBaseline = "middle";
             runtime.ctx.textAlign = "center";
@@ -300,7 +299,7 @@
         window.requestAnimationFrame(frame);
     }
 
-    const isVisible = () => document.getElementById(id) !== null;
+    const isVisible = () => document.getElementById(id) && runtime.canvas;
 
     const sendMessage = message => {
         log(`sending ${JSON.stringify(message).substring(0, 64)}`);
@@ -327,7 +326,7 @@
 
     const prepare = async () => {
         log("prepare");
-        const defaults = cfg.defaults || await saveCfg(`defaults.v${version}`);
+        const defaults = runtime.defaults || await saveCfg(`defaults.v${version}`);
         const configuration = await loadCfg(`configuration.v${version}`);
 
         sendMessage({
@@ -335,7 +334,7 @@
             configuration: configuration
         });
 
-        cfg.defaults = defaults;
+        runtime.defaults = defaults;
     };
 
     const show = () => {
@@ -374,10 +373,8 @@
         return runtime.running;
     };
 
-    const isRange = o => o && typeof o.random === "function" && typeof o.limit === "function";
-
     const flatten = (o, results, current) => {
-        if (isRange(o)) {
+        if (o instanceof Range) {
             results[current + ".range-min"] = o.min;
             results[current + ".range-max"] = o.max;
         } else if (typeof o === "object") {
@@ -444,14 +441,12 @@
             holder[field] = value;
         }
 
-        if (key === "cfg.ui.invertColors") {
-            if (!extension) {
-                document.body.style.backgroundColor = getColor("#fff", "#000");
-                if (value) {
-                    document.getElementById("nc-confetti-everywhere-cfg-toggle").setAttribute("src", "gear-24-white.png");
-                } else {
-                    document.getElementById("nc-confetti-everywhere-cfg-toggle").setAttribute("src", "gear-24-black.png");
-                }
+        if (key === "cfg.ui.invertColors" && !extension) {
+            document.body.style.backgroundColor = getColor("#fff", "#000");
+            if (value) {
+                document.getElementById("nc-confetti-everywhere-cfg-toggle").setAttribute("src", "gear-24-white.png");
+            } else {
+                document.getElementById("nc-confetti-everywhere-cfg-toggle").setAttribute("src", "gear-24-black.png");
             }
         }
 
@@ -541,7 +536,7 @@
         });
     }
 
-    visualViewport.addEventListener("resize", e => {
+    visualViewport.addEventListener("resize", () => {
         if (isVisible()) {
             refreshCanvas();
         }
